@@ -1,2 +1,2 @@
-# neural_networks
+# Neural Networks
 Implementation of some neural networks for University
