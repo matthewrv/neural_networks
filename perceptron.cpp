@@ -105,7 +105,7 @@ public:
         std::srand(std::time(NULL));
         for (int i = 0; i < m; i++)
             for (int j = 0; j < n; j++)
-                content[i][j] = 2.0f * (std::rand() / RAND_MAX) - 1.0f;
+                content[i][j] = 2.0f * (std::rand() / (float)RAND_MAX) - 1.0f;
     }
 
     void print()
@@ -118,6 +118,26 @@ public:
             }
             printf("\n");
         }
+    }
+
+    float max()
+    {
+        float max = 0;
+        for (int i = 0; i < m; i++)
+            for (int j = 0; j < n; j++)
+                if (max < content[i][j])
+                    max = content[i][j];
+        return max;
+    }
+
+    float min()
+    {
+        float min = 0;
+        for (int i = 0; i < m; i++)
+            for (int j = 0; j < n; j++)
+                if (min > content[i][j])
+                    min = content[i][j];
+        return min;
     }
 
     ~Matrix()
@@ -176,6 +196,7 @@ public:
     {
         matrix = Matrix(n_outputs, n_inputs);
         matrix.set_random();
+        printf("Weights initialized within range: (%f, %f)\n", matrix.min(), matrix.max());
     }
 
     float* calculate_one(int *inputs)
@@ -204,19 +225,6 @@ public:
         for (int iter = 0; iter < max_iterations && err > tolerance; iter++)
         {
             float** outputs = calculate_many(inputs, train_input_size);
-            // Calculate new error
-            err = 0;
-            for (int k = 0; k < train_input_size; k++)
-            {
-                float err_k = 0;
-                for (int i = 0; i < n_outputs; i++)
-                {
-                    err_k += (labels[k][i] - outputs[k][i]) * (labels[k][i] - outputs[k][i]);
-                }
-                err += err_k;
-            }
-            err = err / 2;
-
             // Calculate correction matrix
             Matrix correction_matrix(n_outputs, n_inputs);  // Shape is the same, as weights
 # pragma omp parallel for
@@ -226,12 +234,20 @@ public:
                 {
                     for (int k = 0; k < train_input_size; k++)
                     {
-                        correction_matrix.content[i][j] = -(labels[k][i] - outputs[k][i]) * df(outputs[k][i]) * inputs[k][j];
+                        correction_matrix.content[i][j] = correction_matrix.content[i][j] -(labels[k][i] - outputs[k][i]) * df(outputs[k][i]) * inputs[k][j];
                     }
                 }
             }
             // Correct weights
             matrix = matrix - correction_matrix;
+            // Recalculate error
+            err = 0;
+            for (int k = 0; k < train_input_size; k++)
+                for (int j = 0; j < n_outputs; j++)
+                    err += (labels[k][j] - outputs[k][j]) * (labels[k][j] - outputs[k][j]);
+            err *= 0.5;
+            // printf("Iteration: %d. Current error %f\n", iter, err);
+
             // Free memory
             for (int i = 0; i < train_input_size; i++)
             {
@@ -370,6 +386,25 @@ int main()
     //     { 0,0,0,1,0 },
     //     { 0,0,0,0,1 }
     // };
+    // Copy data to dynamic arrays
+    // int** image = NULL;
+    // float** cipher = NULL;
+
+    // image = new int*[K];
+    // for (int i = 0; i < K; i++)
+    // {
+    //     image[i] = new int[N];
+    //     for (int j = 0; j < N; j++)
+    //         image[i][j] = image_stat[i][j];
+    // }
+
+    // cipher = new float*[K];
+    // for (int i = 0; i < K; i++)
+    // {
+    //     cipher[i] = new float[M];
+    //     for (int j = 0; j < M; j++)
+    //         cipher[i][j] = cipher_stat[i][j];
+    // }
     int number_of_images = 0;
     int image_size = 0;
     const int output_size = 10;
